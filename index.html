@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<meta charset="utf-8">
+
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css">
+
+<!-- Optional theme -->
+<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-theme.min.css">
+
+<!-- Optional theme -->
+<link rel="stylesheet" href="//nickqizhu.github.io/dc.js/css/dc.css">
+
+<style type="text/css">
+.reset{
+  position: absolute;
+}
+</style>
+
+
+<body>
+
+
+<div class="jumbotron">
+    <h1>TCG git repository statistics</h1>
+  </div>
+
+<div class="container">
+
+  <div class="row">
+    <div class="col-md-12">
+        <div class="dc-data-count">
+          <h3>Selected commits&nbsp;:</h3>
+            <span class="filter-count"></span> over <span class="total-count"></span> | <a
+                href="javascript:dc.filterAll(); dc.renderAll();">Reset All</a>
+        </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <div class="row"> 
+    <div class="col-md-6">
+        <div id="hour-of-day-chart">
+          <h3>Hours of the day</h3>
+          <span class="interval" style="display: none;">Interval&nbsp;: <span class="filter"></span></span>
+          <a class="reset" href="javascript:hourOfDayChart.filterAll();dc.redrawAll();" style="display: none;">reset</a>
+        </div>
+    </div>
+  </div>
+  
+  <div class="row">
+    <div class="col-md-6">
+      <div id="day-of-week-chart">
+          <h3>Days of the week</h3>
+          <a class="reset" href="javascript:dayOfWeekChart.filterAll();dc.redrawAll();" style="display: none;">reset</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6">
+      <div id="authors-chart">
+          <h3>Authors</h3>
+          <a class="reset" href="javascript:authorsChart.filterAll();dc.redrawAll();" style="display: none;">reset</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-12">
+      <h3>Daily commits</h3>
+      <div id="daily-volume-chart"></div>
+    </div>
+  </div>
+
+
+</div>
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="http://d3js.org/d3.v3.js"></script>
+<script src="http://nickqizhu.github.io/dc.js/js/dc.js"></script>
+<script src="http://nickqizhu.github.io/dc.js/js/crossfilter.js"></script>
+<!-- Latest compiled and minified JavaScript -->
+<script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
+
+<script>
+
+
+
+var authorsChart = dc.pieChart("#authors-chart");
+var dayOfWeekChart = dc.rowChart("#day-of-week-chart");
+var hourOfDayChart = dc.barChart("#hour-of-day-chart");
+var volumeChart = dc.barChart("#daily-volume-chart");
+
+var dsv = d3.dsv(" ", "text/plain");
+var dateFormat = d3.time.format("%Y-%m-%d");
+var datetimeFormat = d3.time.format("%Y-%m-%d %H:%M:%S %Z");
+
+dsv("gitstats.tsv", function(d) {
+  // format style :
+  // git log --format='%ai %an'
+  // date time zone firstname lastname
+  // "2013-10-17 18:14:56 +0200 Bertrand TORNIL"
+  return {
+    date: dateFormat.parse(d.date),
+    datetime: datetimeFormat.parse(d.date + ' ' + d.time + ' ' + d.zone),
+    author: d.firstname.toLowerCase() + ' ' + d.lastname.toLowerCase()
+  };
+}, function (data) {
+  
+    var ndx = crossfilter(data);
+
+    var all = ndx.groupAll();
+
+    var author = ndx.dimension(function(d) {
+      return d.author;
+    })
+    var authorGroup = author.group();
+
+    var dayOfWeek = ndx.dimension(function (d) {
+      var day = d.datetime.getDay();
+      var name=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+      return day+"."+name[day];
+    });
+    var dayOfWeekGroup = dayOfWeek.group();
+
+    var hourOfDay = ndx.dimension(function (d) {
+      var hour = d.datetime.getHours();
+      return hour;
+    });
+    var hourOfDayGroup = hourOfDay.group();
+
+    var commitByDays = ndx.dimension(function (d) {
+      return d.date;
+    });
+    var commitByDaysGroup = commitByDays.group();
+
+
+    dayOfWeekChart.width(180)
+                  .height(180)
+                  .margins({top: 20, left: 10, right: 10, bottom: 20})
+                  .group(dayOfWeekGroup)
+                  .dimension(dayOfWeek)
+                  .ordinalColors(['#3182bd', '#6baed6', '#9ecae1', '#c6dbef', '#dadaeb'])
+                  .label(function (d) {
+                      return d.key.split(".")[1];
+                  })
+                  .title(function (d) {
+                      return d.value;
+                  })
+                  .elasticX(true)
+                  .xAxis().ticks(4);
+
+    authorsChart.width(180)
+                .height(180)
+                .radius(80)
+                .innerRadius(30)
+                .dimension(author)
+                .group(authorGroup);
+
+    hourOfDayChart.width(420)
+                  .height(180)
+                  .margins({top: 10, right: 50, bottom: 30, left: 40})
+                  .dimension(hourOfDay)
+                  .group(hourOfDayGroup)
+                  .elasticY(true)
+                  .centerBar(true)
+                  .gap(1)
+                  .round(dc.round.floor)
+                  .x(d3.scale.linear().domain([0, 23]))
+                  .renderHorizontalGridLines(true)
+                  .filterPrinter(function (filters) {
+                      var filter = filters[0], s = "";
+                      s += parseInt(filter[0], 10) + "h -> " + parseInt(filter[1], 10) + "h";
+                      return s;
+                  })
+                  .xAxis()
+                  .tickFormat(function (v) {
+                      return v + "h";
+                  });
+
+    hourOfDayChart.yAxis().ticks(5);
+
+    volumeChart.width(990)
+               .height(140)
+               .margins({top: 0, right: 50, bottom: 20, left: 40})
+               .dimension(commitByDays)
+               .group(commitByDaysGroup)
+               .elasticY(true)
+               .centerBar(true)
+               .gap(1)
+               .x(d3.time.scale().domain([new Date(2012, 10, 23), new Date(2013, 10, 18)]))
+               .round(d3.time.day.round)
+               .xUnits(d3.time.days);
+
+    dc.dataCount(".dc-data-count").dimension(ndx)
+                                  .group(all);
+
+    dc.renderAll();
+  }
+);
+
+// Determine the current version of dc with `dc.version`
+//d3.selectAll("#version").text(dc.version);
+
+
+</script>
+
+</body>
+</html>
