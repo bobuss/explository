@@ -15,6 +15,9 @@
 .reset{
   position: absolute;
 }
+.dc-chart g.row text {
+  fill: black;
+}
 </style>
 
 
@@ -87,7 +90,7 @@
 
 
 
-var authorsChart = dc.pieChart("#authors-chart");
+var authorsChart = dc.rowChart("#authors-chart");
 var dayOfWeekChart = dc.rowChart("#day-of-week-chart");
 var hourOfDayChart = dc.barChart("#hour-of-day-chart");
 var volumeChart = dc.barChart("#daily-volume-chart");
@@ -136,38 +139,15 @@ dsv("gitstats.tsv", function(d) {
     var commitByDaysGroup = commitByDays.group();
 
 
-    dayOfWeekChart.width(180)
+    hourOfDayChart.width(620)
                   .height(180)
-                  .margins({top: 20, left: 10, right: 10, bottom: 20})
-                  .group(dayOfWeekGroup)
-                  .dimension(dayOfWeek)
-                  .ordinalColors(['#3182bd', '#6baed6', '#9ecae1', '#c6dbef', '#dadaeb'])
-                  .label(function (d) {
-                      return d.key.split(".")[1];
-                  })
-                  .title(function (d) {
-                      return d.value;
-                  })
-                  .elasticX(true)
-                  .xAxis().ticks(4);
-
-    authorsChart.width(180)
-                .height(180)
-                .radius(80)
-                .innerRadius(30)
-                .dimension(author)
-                .group(authorGroup);
-
-    hourOfDayChart.width(420)
-                  .height(180)
-                  .margins({top: 10, right: 50, bottom: 30, left: 40})
+                  .margins({top: 10, right: 10, bottom: 30, left: 40})
                   .dimension(hourOfDay)
                   .group(hourOfDayGroup)
                   .elasticY(true)
-                  .centerBar(true)
                   .gap(1)
                   .round(dc.round.floor)
-                  .x(d3.scale.linear().domain([0, 23]))
+                  .x(d3.scale.linear().domain([0, 24]))
                   .renderHorizontalGridLines(true)
                   .filterPrinter(function (filters) {
                       var filter = filters[0], s = "";
@@ -181,14 +161,49 @@ dsv("gitstats.tsv", function(d) {
 
     hourOfDayChart.yAxis().ticks(5);
 
+
+    dayOfWeekChart.width(360)
+                  .height(30 * dayOfWeekGroup.size())
+                  .margins({top: 10, left: 10, right: 10, bottom: 30})
+                  .group(dayOfWeekGroup)
+                  .dimension(dayOfWeek)
+                  .ordinalColors(['#3182bd', '#6baed6', '#9ecae1', '#c6dbef', '#dadaeb'])
+                  .label(function (d) {
+                      return d.key.split(".")[1];
+                  })
+                  .title(function (d) {
+                      return d.value;
+                  })
+                  .elasticX(true)
+                  .xAxis().ticks(4);
+
+    authorsChart.width(480)
+                .height(30 * authorGroup.size())
+                .margins({top: 10, left: 10, right: 10, bottom: 30})
+                .group(authorGroup)
+                .dimension(author)
+                .ordering(function(d, i) {
+                   return -d.value;
+                })
+                .colors(d3.scale.category20b())
+                .label(function (d) {
+                    return d.key;
+                })
+                .title(function (d) {
+                    return d.value;
+                })
+                .elasticX(true)
+                .xAxis().ticks(4);
+
+
     volumeChart.width(990)
-               .height(140)
-               .margins({top: 0, right: 50, bottom: 20, left: 40})
+               .height(160)
+               .margins({top: 10, right: 10, bottom: 30, left: 40})
                .dimension(commitByDays)
                .group(commitByDaysGroup)
                .elasticY(true)
                .centerBar(true)
-               .gap(1)
+               .gap(0)
                .x(d3.time.scale().domain([new Date(2012, 10, 23), new Date(2013, 10, 18)]))
                .round(d3.time.day.round)
                .xUnits(d3.time.days);
