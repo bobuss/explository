@@ -1,12 +1,10 @@
 <!DOCTYPE html>
 <html>
+<head>
 <meta charset="utf-8">
 
 <!-- Latest compiled and minified CSS -->
 <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css">
-
-<!-- Optional theme -->
-<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-theme.min.css">
 
 <!-- Optional theme -->
 <link rel="stylesheet" href="//nickqizhu.github.io/dc.js/css/dc.css">
@@ -19,16 +17,15 @@
   fill: black;
 }
 </style>
-
-
+</head>
 <body>
 
 
-<div class="jumbotron">
+<div class="container">
+
+  <div class="jumbotron">
     <h1>TCG git repository statistics</h1>
   </div>
-
-<div class="container">
 
   <div class="row">
     <div class="col-md-12">
@@ -42,9 +39,18 @@
 
   <hr>
 
+  <div class="row">
+    <div class="col-md-6">
+      <div class="authors-chart">
+          <h3>Authors</h3>
+          <a class="reset" href="javascript:authorsChart.filterAll();dc.redrawAll();" style="display: none;">reset</a>
+      </div>
+    </div>
+  </div>
+
   <div class="row"> 
     <div class="col-md-6">
-        <div id="hour-of-day-chart">
+        <div class="hour-of-day-chart">
           <h3>Hours of the day</h3>
           <span class="interval" style="display: none;">Interval&nbsp;: <span class="filter"></span></span>
           <a class="reset" href="javascript:hourOfDayChart.filterAll();dc.redrawAll();" style="display: none;">reset</a>
@@ -54,7 +60,7 @@
   
   <div class="row">
     <div class="col-md-6">
-      <div id="day-of-week-chart">
+      <div class="day-of-week-chart">
           <h3>Days of the week</h3>
           <a class="reset" href="javascript:dayOfWeekChart.filterAll();dc.redrawAll();" style="display: none;">reset</a>
       </div>
@@ -62,38 +68,22 @@
   </div>
 
   <div class="row">
-    <div class="col-md-6">
-      <div id="authors-chart">
-          <h3>Authors</h3>
-          <a class="reset" href="javascript:authorsChart.filterAll();dc.redrawAll();" style="display: none;">reset</a>
-      </div>
-    </div>
-  </div>
-
-  <div class="row">
     <div class="col-md-12">
       <h3>Daily commits</h3>
-      <div id="daily-volume-chart"></div>
+      <div class="daily-volume-chart"></div>
     </div>
   </div>
 
-
 </div>
-<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
 <script src="http://d3js.org/d3.v3.js"></script>
 <script src="http://nickqizhu.github.io/dc.js/js/dc.js"></script>
 <script src="http://nickqizhu.github.io/dc.js/js/crossfilter.js"></script>
-<!-- Latest compiled and minified JavaScript -->
-<script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
-
 <script>
-
-
-
-var authorsChart = dc.rowChart("#authors-chart");
-var dayOfWeekChart = dc.rowChart("#day-of-week-chart");
-var hourOfDayChart = dc.barChart("#hour-of-day-chart");
-var volumeChart = dc.barChart("#daily-volume-chart");
+var authorsChart = dc.rowChart(".authors-chart");
+var hourOfDayChart = dc.barChart(".hour-of-day-chart");
+var dayOfWeekChart = dc.rowChart(".day-of-week-chart");
+var volumeChart = dc.barChart(".daily-volume-chart");
 
 var dsv = d3.dsv(" ", "text/plain");
 var dateFormat = d3.time.format("%Y-%m-%d");
@@ -110,35 +100,64 @@ dsv("gitstats.tsv", function(d) {
     author: d.firstname.toLowerCase() + ' ' + d.lastname.toLowerCase()
   };
 }, function (data) {
-  
+    //
+    // I. Data part
+    //
     var ndx = crossfilter(data);
 
     var all = ndx.groupAll();
 
+    // authors
     var author = ndx.dimension(function(d) {
       return d.author;
     })
     var authorGroup = author.group();
 
-    var dayOfWeek = ndx.dimension(function (d) {
-      var day = d.datetime.getDay();
-      var name=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-      return day+"."+name[day];
-    });
-    var dayOfWeekGroup = dayOfWeek.group();
-
+    // hours of the day
     var hourOfDay = ndx.dimension(function (d) {
       var hour = d.datetime.getHours();
       return hour;
     });
     var hourOfDayGroup = hourOfDay.group();
 
+    // days of the week
+    var dayOfWeek = ndx.dimension(function (d) {
+      var day = d.datetime.getDay();
+      var name=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+      return day + "." + name[day];
+    });
+    var dayOfWeekGroup = dayOfWeek.group();
+   
+    // commits by day
     var commitByDays = ndx.dimension(function (d) {
       return d.date;
     });
     var commitByDaysGroup = commitByDays.group();
 
+    //
+    // II. Chart parts
+    //
 
+    // authors
+    authorsChart.width(480)
+                .height(30 * authorGroup.size())
+                .margins({top: 10, left: 10, right: 10, bottom: 30})
+                .group(authorGroup)
+                .dimension(author)
+                .ordering(function(d, i) {
+                   return -d.value;
+                })
+                .colors(d3.scale.category20b())
+                .label(function (d) {
+                    return d.key;
+                })
+                .title(function (d) {
+                    return d.value;
+                })
+                .elasticX(true)
+                .xAxis().ticks(4);
+
+    // hours of the day
     hourOfDayChart.width(620)
                   .height(180)
                   .margins({top: 10, right: 10, bottom: 30, left: 40})
@@ -161,7 +180,7 @@ dsv("gitstats.tsv", function(d) {
 
     hourOfDayChart.yAxis().ticks(5);
 
-
+    // day of the week
     dayOfWeekChart.width(360)
                   .height(30 * dayOfWeekGroup.size())
                   .margins({top: 10, left: 10, right: 10, bottom: 30})
@@ -177,25 +196,7 @@ dsv("gitstats.tsv", function(d) {
                   .elasticX(true)
                   .xAxis().ticks(4);
 
-    authorsChart.width(480)
-                .height(30 * authorGroup.size())
-                .margins({top: 10, left: 10, right: 10, bottom: 30})
-                .group(authorGroup)
-                .dimension(author)
-                .ordering(function(d, i) {
-                   return -d.value;
-                })
-                .colors(d3.scale.category20b())
-                .label(function (d) {
-                    return d.key;
-                })
-                .title(function (d) {
-                    return d.value;
-                })
-                .elasticX(true)
-                .xAxis().ticks(4);
-
-
+    // commits by day
     volumeChart.width(990)
                .height(160)
                .margins({top: 10, right: 10, bottom: 30, left: 40})
@@ -208,17 +209,14 @@ dsv("gitstats.tsv", function(d) {
                .round(d3.time.day.round)
                .xUnits(d3.time.days);
 
+    // count selected commits
     dc.dataCount(".dc-data-count").dimension(ndx)
                                   .group(all);
 
+    // render everything
     dc.renderAll();
   }
 );
-
-// Determine the current version of dc with `dc.version`
-//d3.selectAll("#version").text(dc.version);
-
-
 </script>
 
 </body>
