@@ -61,7 +61,7 @@ dsv("gitstats.txt", function(data) {
               .ordering(function(d, i) {
                  return -d.value;
               })
-              .colors(d3.scale.category20b())
+              .colors(d3.scale.category20())
               .label(function (d) {
                   return d.key;
               })
@@ -100,7 +100,7 @@ dsv("gitstats.txt", function(data) {
                 .margins({top: 10, left: 10, right: 10, bottom: 30})
                 .group(dayOfWeekGroup)
                 .dimension(dayOfWeek)
-                .ordinalColors(['#3182bd', '#6baed6', '#9ecae1', '#c6dbef', '#dadaeb'])
+                .colors(d3.scale.category10())
                 .label(function (d) {
                     return d.key.split(".")[1];
                 })
