@@ -1,108 +1,106 @@
-//
-// GIT statistics
-//
+(function(window) {
 
-var authorsChart = dc.rowChart(".authors-chart");
-var hourOfDayChart = dc.barChart(".hour-of-day-chart");
-var dayOfWeekChart = dc.rowChart(".day-of-week-chart");
-var volumeChart = dc.barChart(".daily-volume-chart");
+  window.onload = function() {
 
-var dateFormat = d3.time.format("%Y-%m-%d");
-var datetimeFormat = d3.time.format("%Y-%m-%d %H:%M:%S %Z");
+    var form = document.getElementById("form");
+    form.addEventListener('submit',function(e) {
+      e.preventDefault();
 
-var dsv = d3.dsv("|", "text/plain");
+      var inputPath = document.getElementById("input-path").value;
 
-dsv("gitstats.txt", function(data) {
+      dsv("/data"+inputPath, render).response(function(request) {
 
-  //
-  // I. Data part
-  //
-  var ndx = crossfilter(data);
+        return dsv.parseRows(request.responseText, function(d) {
+          // format style :
+          // git log --format='%ai|%an'
+          // datetime|author
+          // "2013-10-17 18:14:56 +0200|Bertrand TORNIL"
+          var datetime = datetimeFormat.parse(d[0]);
+          return {
+            datetime: datetime,
+            date : new Date(datetime.getFullYear(),
+                            datetime.getMonth(),
+                            datetime.getDate()),
+            author: d[1].toLowerCase()
+          };
+        });
 
-  var all = ndx.groupAll();
+      });
 
-  // authors
-  var author = ndx.dimension(function(d) {
-    return d.author;
-  })
-  var authorGroup = author.group();
+      document.getElementById("fun-stats").className = "";
 
-  // hours of the day
-  var hourOfDay = ndx.dimension(function (d) {
-    var hour = d.datetime.getHours();
-    return hour;
-  });
-  var hourOfDayGroup = hourOfDay.group();
+      return false;
 
-  // days of the week
-  var dayOfWeek = ndx.dimension(function (d) {
-    var day = d.datetime.getDay();
-    var name=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-    return day + "." + name[day];
-  });
-  var dayOfWeekGroup = dayOfWeek.group();
+    },false);
+  };
 
-  // commits by day
-  var commitByDays = ndx.dimension(function (d) {
-    return d.date;
-  });
-  var commitByDaysGroup = commitByDays.group();
 
   //
-  // II. Chart parts
+  // GIT statistics
   //
 
-  // authors
-  authorsChart.width(990)
-              .height(30 * authorGroup.size())
-              .margins({top: 10, left: 10, right: 10, bottom: 30})
-              .group(authorGroup)
-              .dimension(author)
-              .ordering(function(d, i) {
-                 return -d.value;
-              })
-              .colors(d3.scale.category20())
-              .label(function (d) {
-                  return d.key;
-              })
-              .title(function (d) {
-                  return d.value;
-              })
-              .elasticX(true)
-              .xAxis().ticks(4);
+  var authorsChart = dc.rowChart(".authors-chart");
+  var hourOfDayChart = dc.barChart(".hour-of-day-chart");
+  var dayOfWeekChart = dc.rowChart(".day-of-week-chart");
+  var volumeChart = dc.barChart(".daily-volume-chart");
 
-  // hours of the day
-  hourOfDayChart.width(620)
-                .height(180)
-                .margins({top: 10, right: 10, bottom: 30, left: 40})
-                .dimension(hourOfDay)
-                .group(hourOfDayGroup)
-                .elasticY(true)
-                .gap(1)
-                .round(dc.round.floor)
-                .x(d3.scale.linear().domain([0, 24]))
-                .renderHorizontalGridLines(true)
-                .filterPrinter(function (filters) {
-                    var filter = filters[0], s = "";
-                    s += parseInt(filter[0], 10) + "h -> " + parseInt(filter[1], 10) + "h";
-                    return s;
-                })
-                .xAxis()
-                .tickFormat(function (v) {
-                    return v + "h";
-                });
+  var dateFormat = d3.time.format("%Y-%m-%d");
+  var datetimeFormat = d3.time.format("%Y-%m-%d %H:%M:%S %Z");
 
-  hourOfDayChart.yAxis().ticks(5);
+  var dsv = d3.dsv("|", "text/plain");
 
-  // day of the week
-  dayOfWeekChart.width(360)
-                .height(30 * dayOfWeekGroup.size())
+  var render = function(data) {
+
+    //
+    // I. Data part
+    //
+    var ndx = crossfilter(data);
+
+    var all = ndx.groupAll();
+
+    // authors
+    var author = ndx.dimension(function(d) {
+      return d.author;
+    })
+    var authorGroup = author.group();
+
+    // hours of the day
+    var hourOfDay = ndx.dimension(function (d) {
+      var hour = d.datetime.getHours();
+      return hour;
+    });
+    var hourOfDayGroup = hourOfDay.group();
+
+    // days of the week
+    var dayOfWeek = ndx.dimension(function (d) {
+      var day = d.datetime.getDay();
+      var name=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+      return day + "." + name[day];
+    });
+    var dayOfWeekGroup = dayOfWeek.group();
+
+    // commits by day
+    var commitByDays = ndx.dimension(function (d) {
+      return d.date;
+    });
+    var commitByDaysGroup = commitByDays.group();
+
+    //
+    // II. Chart parts
+    //
+
+    // authors
+    authorsChart.width(990)
+                .height(30 * authorGroup.size())
                 .margins({top: 10, left: 10, right: 10, bottom: 30})
-                .group(dayOfWeekGroup)
-                .dimension(dayOfWeek)
-                .colors(d3.scale.category10())
+                .group(authorGroup)
+                .dimension(author)
+                .ordering(function(d, i) {
+                   return -d.value;
+                })
+                .colors(d3.scale.category20())
                 .label(function (d) {
-                    return d.key.split(".")[1];
+                    return d.key;
                 })
                 .title(function (d) {
                     return d.value;
@@ -110,40 +108,64 @@ dsv("gitstats.txt", function(data) {
                 .elasticX(true)
                 .xAxis().ticks(4);
 
-  // commits by day
-  volumeChart.width(990)
-             .height(160)
-             .margins({top: 10, right: 10, bottom: 30, left: 40})
-             .dimension(commitByDays)
-             .group(commitByDaysGroup)
-             .elasticY(true)
-             .centerBar(true)
-             .gap(0)
-             .x(d3.time.scale().domain([commitByDays.bottom(1)[0].date, commitByDays.top(1)[0].date]))
-             .round(d3.time.day.round)
-             .xUnits(d3.time.days);
+    // hours of the day
+    hourOfDayChart.width(620)
+                  .height(180)
+                  .margins({top: 10, right: 10, bottom: 30, left: 40})
+                  .dimension(hourOfDay)
+                  .group(hourOfDayGroup)
+                  .elasticY(true)
+                  .gap(1)
+                  .round(dc.round.floor)
+                  .x(d3.scale.linear().domain([0, 24]))
+                  .renderHorizontalGridLines(true)
+                  .filterPrinter(function (filters) {
+                      var filter = filters[0], s = "";
+                      s += parseInt(filter[0], 10) + "h -> " + parseInt(filter[1], 10) + "h";
+                      return s;
+                  })
+                  .xAxis()
+                  .tickFormat(function (v) {
+                      return v + "h";
+                  });
 
-  // count selected commits
-  dc.dataCount(".dc-data-count").dimension(ndx)
-                                .group(all);
+    hourOfDayChart.yAxis().ticks(5);
 
-  // render everything
-  dc.renderAll();
-}).response(function(request) {
+    // day of the week
+    dayOfWeekChart.width(360)
+                  .height(30 * dayOfWeekGroup.size())
+                  .margins({top: 10, left: 10, right: 10, bottom: 30})
+                  .group(dayOfWeekGroup)
+                  .dimension(dayOfWeek)
+                  .colors(d3.scale.category10())
+                  .label(function (d) {
+                      return d.key.split(".")[1];
+                  })
+                  .title(function (d) {
+                      return d.value;
+                  })
+                  .elasticX(true)
+                  .xAxis().ticks(4);
 
-  return dsv.parseRows(request.responseText, function(d) {
-    // format style :
-    // git log --format='%ai|%an'
-    // datetime|author
-    // "2013-10-17 18:14:56 +0200|Bertrand TORNIL"
-    var datetime = datetimeFormat.parse(d[0]);
-    return {
-      datetime: datetime,
-      date : new Date(datetime.getFullYear(),
-                      datetime.getMonth(),
-                      datetime.getDate()),
-      author: d[1].toLowerCase()
-    };
-  });
+    // commits by day
+    volumeChart.width(990)
+               .height(160)
+               .margins({top: 10, right: 10, bottom: 30, left: 40})
+               .dimension(commitByDays)
+               .group(commitByDaysGroup)
+               .elasticY(true)
+               .centerBar(true)
+               .gap(0)
+               .x(d3.time.scale().domain([commitByDays.bottom(1)[0].date, commitByDays.top(1)[0].date]))
+               .round(d3.time.day.round)
+               .xUnits(d3.time.days);
 
-});
+    // count selected commits
+    dc.dataCount(".dc-data-count").dimension(ndx)
+                                  .group(all);
+
+    // render everything
+    dc.renderAll();
+  }
+
+})(window);
